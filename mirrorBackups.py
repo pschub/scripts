@@ -1,42 +1,27 @@
 
 # Mirror Backups
 #
-# This script will create weekly snapshots of the ssd backup. Old snapshots
-# are managed such that there are weekly snapshots of the past 5 weeks,
-# monthly snapshots from the previous 6 months, and yearly snapshots until
-# we run out of disk space.
-#  
-# The snapshots are labelled YYYY_MM_DD and are organized as follows:
-# 
-# mirror/weekly/
-#             <week1>
-#             <week2>
-#             <week3>
-#             <week4>
-#             <week5>
-# mirror/monthly/
-#             <month1>
-#             <month2>
-#             <month3>
-#             <month4>
-#             <month5>
-#             <month6>
-# mirror/yearly/
-#             <year1>
-#             <year2>
-#               ...
+# This script will create snapshots of the sd drive at specified intervals:
+# weekly - monthly - yearly
+# The following snapshots will be created:
+#
+# Wk1
+# Wk2
+# Wk3
+# Wk4
+# Wk5
+# Month 1-6
+# Year 1, 2...
 #
 # Cron job will instigate a backup every week, doing the following:
-# --- Create new backup weekly x
+# --- Create new backup week x
 # --- Check if its a new month. If so, then copy week 1 to month y.
 # --- Check if its a new year. If so, then copy month 1 to year z
-# --- Delete weeklies to stay under 5 most recent weeks.
-# --- Delete monthlies to stay under 12 most recent months.
+# --- Delete weeks to stay under 5 most recent weeks.
+# --- Delete months to stay under 12 most recent months.
 #
-# April 2017 v1
+# November 2017 Patrick Schubert v1.1
 #
-# Copyright (C) 2017 Patrick Schubert
-# 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -56,7 +41,7 @@ import myshutil as sh
 import logging
 import sys
 
-SOURCE = '/media/otterback0/full'
+SOURCE = '/media/otterback0/rsync/full'
 DEST   = '/media/otterback1/mirror'
 SANDBOX = Path('/media/otterback1/mirror')
 WEEKLY_PATH = DEST / Path('weekly')
@@ -65,7 +50,7 @@ YEARLY_PATH = DEST / Path('yearly')
 
 # Max number of backups in each category.
 MAX_WEEKLIES = 5
-MAX_MONTHLIES = 6 
+MAX_MONTHLIES = 6
 
 LOGFILE = '/home/otter/log/mirror.log'
 LOGLEVEL = logging.DEBUG
@@ -175,6 +160,8 @@ def MirrorBackup():
     # Perfom backup. Copy from source to weekly dir.
     todaysBackup = Backup(date=datetime.today(), parent=WEEKLY_PATH)
     logging.info("Creating weekly backup {}".format(todaysBackup.path))
+    if (todaysBackup.path.exists()):
+        sh.rm(todaysBackup.path)
     ret = sh.copy(SOURCE, todaysBackup.path)
     if not ret:
         logging.error("Could not create weekly. Aborting.")
@@ -243,11 +230,11 @@ def MirrorBackup():
         if not ret:
             logging.error("rm monthly failed. Aborting prune.")
             sys.exit(1)
-
     return
 
 
 if __name__ == "__main__":
     logging.basicConfig(format='[%(levelname)s %(module)s] %(message)s',
+                        filename=LOGFILE,
                         level=LOGLEVEL)
     MirrorBackup()
